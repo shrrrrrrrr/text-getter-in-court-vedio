@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf6e8" />
+    <title>庭录 · 庭审逐字转写</title>
+    <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳转到工作区</a>
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/" aria-label="庭录首页"
+        ><img src="/static/mark.svg" width="38" height="42" alt="" /><span
+          >庭录<small>COURT TRANSCRIPT</small></span
+        ></a
+      >
+      <div class="nav-label">AI + 法律 <span>WORKSPACE</span></div>
+      <button class="nav-item active" id="home-button">
+        <span aria-hidden="true">▤</span> 庭审转写 <span class="arrow">↗</span>
+      </button>
+      <button class="nav-item" id="guide-button">
+        <span aria-hidden="true">⌘</span> 使用引导
+      </button>
+      <div class="recent-heading">
+        <span>最近的转写</span
+        ><button id="refresh-tasks" class="icon-button" aria-label="刷新任务">
+          ↻
+        </button>
+      </div>
+      <div id="task-list" class="task-list">
+        <p class="small muted">正在读取任务…</p>
+      </div>
+      <div class="sidebar-bottom">
+        <span class="env-dot"></span> 本地工作空间
+        <p>视频与逐字稿保存在本机<br />云端识别须单独选择</p>
+        <span class="version">LOCAL EDITION / 0.1.0</span>
+      </div>
+    </aside>
+    <div class="shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          <button
+            id="mobile-menu"
+            class="icon-button"
+            aria-label="展开导航"
+            aria-expanded="false"
+          >
+            ☰</button
+          ><span>项目工具</span><i>/</i><strong>庭审逐字转写</strong>
+        </div>
+        <div class="top-actions">
+          <span id="environment" class="badge">正在检查环境</span
+          ><button class="button primary" id="new-task">＋ 新建转写</button>
+        </div>
+      </header>
+      <main id="main" tabindex="-1">
+        <section id="empty-view" class="empty-view">
+          <div class="page-kicker">VIDEO TO VERBATIM · 庭审记录工作台</div>
+          <div class="intro-row">
+            <div>
+              <h1>每一句，都有出处<span class="pixel-dot">.</span></h1>
+              <p class="intro">
+                从庭审视频到逐字稿。分清声音，保留原话，回到现场。
+              </p>
+            </div>
+            <span class="edition-tag">AI + 法律<br /><b>研究工具 / 01</b></span>
+          </div>
+          <div class="start-grid">
+            <section
+              class="upload-card"
+              id="drop-zone"
+              aria-label="视频上传区域"
+            >
+              <div class="panel-label">
+                <span class="tiny-square"></span> 新建转写
+                <span class="mono">01 / IMPORT</span>
+              </div>
+              <div class="upload-art" aria-hidden="true">
+                <div class="film"><span></span><i>▶</i><span></span></div>
+                <div class="sound-line">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i
+                  ><i></i><i></i><i></i><i></i><i></i><i></i>
+                </div>
+                <b>＋</b>
+              </div>
+              <h2>把庭审现场，放进工作台</h2>
+              <p class="muted">拖入一段视频，或从本机选择文件</p>
+              <button class="button primary wide" id="choose-file">
+                选择庭审视频 <span>↗</span>
+              </button>
+              <p class="file-support">
+                MP4 / MKV / MOV / AVI / WEBM / 更多<br />支持多种视频与音频容器
+                · 单文件最大 4 GB
+              </p>
+              <div class="local-note">
+                <span class="env-dot"></span>
+                默认在本地处理，保留未经润色的识别原文
+              </div>
+            </section>
+            <section class="principles">
+              <div class="panel-label">
+                记录，而非概括 <span class="mono">02 / TRACE</span>
+              </div>
+              <h2>让原话和依据<br />留在同一条时间线上</h2>
+              <div class="principle">
+                <span class="step-no">01</span>
+                <div>
+                  <h3>逐句保留</h3>
+                  <p>保留语气词、重复与中断，不让摘要代替发言。</p>
+                </div>
+                <span class="step-icon">≋</span>
+              </div>
+              <div class="principle">
+                <span class="step-no">02</span>
+                <div>
+                  <h3>分清人物</h3>
+                  <p>区分声音编号与庭审角色，身份线索可回看、可确认。</p>
+                </div>
+                <span class="step-icon">♧</span>
+              </div>
+              <div class="principle">
+                <span class="step-no">03</span>
+                <div>
+                  <h3>正视重叠</h3>
+                  <p>同时发言单独标注，未听清的内容留给核听。</p>
+                </div>
+                <span class="step-icon">⇉</span>
+              </div>
+              <div class="demo-strip">
+                <span>先了解工作台怎么用</span
+                ><button class="text-button" id="open-demo">
+                  打开合成演示 ↗
+                </button>
+              </div>
+            </section>
+          </div>
+          <div class="method-strip">
+            <span class="mono">THE WORKFLOW</span><span>导入视频</span><i>→</i
+            ><span>原话识别</span><i>→</i><span>人物与重叠核听</span><i>→</i
+            ><span>Markdown 逐字稿</span>
+          </div>
+        </section>
+        <section id="task-view" class="task-view" hidden>
+          <div class="workspace-heading">
+            <div class="heading-copy">
+              <div class="page-kicker">
+                TRANSCRIPTION / <span id="task-short-id"></span>
+              </div>
+              <h1 id="task-title"></h1>
+              <p id="task-subtitle" class="muted small"></p>
+            </div>
+            <div class="export-actions">
+              <button class="button" id="export-json">JSON</button
+              ><button class="button primary" id="export-md">
+                导出 Markdown ↗
+              </button>
+            </div>
+          </div>
+          <div id="demo-notice" class="notice" hidden>
+            合成演示 ·
+            发言内容为人工编写，用于体验校对流程，没有真实视频或声轨。
+          </div>
+          <div id="task-status" class="task-status" hidden>
+            <div>
+              <span id="stage"></span
+              ><span id="progress-label" class="mono"></span>
+            </div>
+            <progress id="progress" max="100"></progress>
+            <p id="task-error"></p>
+            <button class="button" id="cancel-task">停止处理</button
+            ><button class="button" id="retry-task">恢复任务</button>
+          </div>
+          <div class="stat-strip">
+            <div>
+              <span>视频时长</span><strong id="stat-duration">—</strong>
+            </div>
+            <div>
+              <span>声音 / 待确认角色</span
+              ><strong id="stat-speakers">—</strong>
+            </div>
+            <div>
+              <span>发言片段</span><strong id="stat-segments">—</strong>
+            </div>
+            <div>
+              <span>已人工核听</span><strong id="stat-reviewed">—</strong>
+            </div>
+          </div>
+          <div class="workspace-grid">
+            <div class="source-column">
+              <section class="panel source-panel">
+                <div class="panel-label">
+                  原始现场 <span class="mono">SOURCE</span>
+                </div>
+                <div class="media-stage" id="media-stage">
+                  <div class="media-placeholder">
+                    <div class="mini-film" aria-hidden="true">▶</div>
+                    <p id="media-description">原始音轨提取后可回放</p>
+                  </div>
+                  <video
+                    id="video-player"
+                    controls
+                    preload="metadata"
+                    hidden
+                  ></video
+                  ><img id="source-frame" alt="选中发言时刻的视频画面" hidden />
+                </div>
+                <audio
+                  id="audio-player"
+                  controls
+                  preload="metadata"
+                  hidden
+                ></audio>
+                <div class="source-actions">
+                  <button class="text-button" id="make-preview">
+                    生成通用视频回放 ↗</button
+                  ><button class="text-button" id="show-frame">
+                    查看当前画面
+                  </button>
+                </div>
+                <p id="preview-hint" class="small muted">
+                  点击发言时间，即可定位原始音轨
+                </p>
+              </section>
+              <section class="panel people-panel">
+                <div class="panel-label">
+                  庭审人物
+                  <button class="text-button" id="add-speaker">＋ 新增</button>
+                </div>
+                <p class="small muted">声音编号不等于身份，点击人物核对角色</p>
+                <div id="speaker-list"></div>
+              </section>
+              <details class="panel evidence-details">
+                <summary>运行信息与待核实事项</summary>
+                <div id="warnings"></div>
+                <dl id="manifest"></dl>
+                <button class="text-button" id="export-audit">
+                  下载人工修改记录 ↗</button
+                ><br /><button class="text-button" id="export-original">
+                  下载初始转写 JSON ↗</button
+                ><br /><button class="text-button" id="export-asr">
+                  下载原始 ASR 结果 ↗
+                </button>
+              </details>
+            </div>
+            <section class="panel transcript-panel">
+              <div class="transcript-top">
+                <div class="transcript-label">
+                  <h2>逐字转写</h2>
+                  <span class="badge" id="result-state">待核听</span>
+                </div>
+                <p class="small muted">保留原话 · 按发言开始时间排列</p>
+                <label class="search"
+                  ><span aria-hidden="true">⌕</span
+                  ><input
+                    id="search"
+                    type="search"
+                    placeholder="搜索原文、说话人或角色"
+                    aria-label="搜索原文、说话人或角色"
+                  /><kbd>/</kbd></label
+                >
+                <div class="filters">
+                  <div role="group" aria-label="发言筛选" class="filter-tabs">
+                    <button
+                      class="selected"
+                      data-filter="all"
+                      aria-pressed="true"
+                    >
+                      全部发言</button
+                    ><button data-filter="review" aria-pressed="false">
+                      待核听</button
+                    ><button data-filter="overlap" aria-pressed="false">
+                      重叠发言
+                    </button>
+                  </div>
+                  <select id="speaker-filter" aria-label="按人物筛选">
+                    <option value="">所有人物</option>
+                  </select>
+                </div>
+              </div>
+              <div id="segments" class="segments" aria-live="polite"></div>
+              <div class="transcript-footer">
+                <span id="shown-count"></span><span>原始识别文本单独保留</span>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+      <footer class="footer">
+        <span>庭录 · AI + 法律项目工具</span
+        ><span>保留原话 / 留下证据 / 人工复核</span>
+      </footer>
+    </div>
+    <input
+      type="file"
+      id="file-input"
+      hidden
+      accept=".mp4,.mkv,.mov,.avi,.webm,.flv,.wmv,.m4v,.mpeg,.mpg,.ts,.mts,.m2ts,.3gp,.3g2,.vob,.rm,.rmvb,.ogv,.mp3,.wav,.m4a,.aac,.flac,.ogg,.opus,.amr,.wma,.aiff,.aif,.caf,.ape"
+    />
+    <dialog id="upload-dialog">
+      <form id="upload-form">
+        <div class="dialog-head">
+          <div>
+            <span class="page-kicker">NEW TRANSCRIPTION</span>
+            <h2>新建庭审转写</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button close-dialog"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <div class="selected-file">
+          <span>▣</span>
+          <div>
+            <strong id="selected-file-name"></strong
+            ><small id="selected-file-size"></small>
+          </div>
+        </div>
+        <label
+          >识别方式<select id="engine">
+            <option value="local">本地语音识别 · 文件留在本机</option>
+            <option value="tencent">腾讯云会议识别 · 发送音频至云端</option>
+          </select></label
+        >
+        <div class="form-row">
+          <label
+            >识别语言<select id="language">
+              <option value="zh">中文</option>
+              <option value="auto">自动检测</option>
+              <option value="en">English</option>
+              <option value="ja">日本語</option>
+            </select></label
+          ><label
+            >预期人数<input
+              id="num-speakers"
+              type="number"
+              min="1"
+              max="50"
+              placeholder="自动检测"
+          /></label>
+        </div>
+        <label
+          >音轨编号<input
+            id="audio-stream"
+            type="number"
+            min="0"
+            max="31"
+            value="0"
+          /><small
+            >从 0 开始；默认提取第一条音轨，混合声道不等于独立人物。</small
+          ></label
+        ><label class="check"
+          ><input id="diarize" type="checkbox" checked /><span
+            >区分说话人并检测重叠发言</span
+          ></label
+        ><label class="check"
+          ><input id="separate" type="checkbox" /><span
+            >实验性双人重叠语音分离<small
+              >仅本地 · 最长 15 秒双人重叠片段 · 分离声轨须人工归属</small
+            ></span
+          ></label
+        ><label id="cloud-consent-label" class="check notice" hidden
+          ><input id="cloud-consent" type="checkbox" /><span
+            >同意将本次音频发送至腾讯云进行识别，可能产生云服务费用。当前适配器限制压缩音频
+            5 MB，不自动切片。</span
+          ></label
+        ><label class="check"
+          ><input id="role-agent" type="checkbox" /><span
+            >本地角色分析 Agent<small
+              >需配置本机模型 API，仅提出带原文证据的角色候选</small
+            ></span
+          ></label
+        ><label class="check"
+          ><input id="visual-evidence" type="checkbox" disabled /><span
+            >提供视频抽帧作为角色线索<small
+              >需视觉模型，最多四张画面；不自动做人脸/口型身份匹配</small
+            ></span
+          ></label
+        >
+        <p id="setup-status" class="notice"></p>
+        <p class="small muted">
+          不会进行摘要或润色。自动识别仍可能遗漏语气词或发生错字，完成后请回听核对。
+        </p>
+        <p id="upload-error" class="form-error" role="alert"></p>
+        <progress id="upload-progress" max="100" value="0" hidden></progress>
+        <div class="dialog-actions">
+          <button type="button" class="button close-dialog">取消</button
+          ><button
+            class="button primary"
+            type="submit"
+            id="start-transcription"
+          >
+            开始转写 ↗
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="edit-dialog">
+      <form id="edit-form">
+        <div class="dialog-head">
+          <div>
+            <span class="page-kicker">LISTEN & VERIFY</span>
+            <h2>逐句核听与校对</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button close-dialog"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <p class="small muted">
+          只按视频原话修正，保留重复、口误和未完成的句子。
+        </p>
+        <label>说话人<select id="edit-speaker"></select></label>
+        <div class="form-row">
+          <label
+            >开始时间 / 秒<input
+              id="edit-start"
+              type="number"
+              min="0"
+              step="0.001"
+              required /></label
+          ><label
+            >结束时间 / 秒<input
+              id="edit-end"
+              type="number"
+              min="0"
+              step="0.001"
+              required
+          /></label>
+        </div>
+        <button type="button" class="text-button" id="edit-listen">
+          ↻ 回听这一句</button
+        ><label
+          >校对文本<textarea id="edit-text" rows="5" required></textarea>
+        </label>
+        <details>
+          <summary>原始识别文本（始终保留）</summary>
+          <p id="edit-original" class="original-text"></p>
+        </details>
+        <label class="check"
+          ><input id="edit-reviewed" type="checkbox" /><span
+            >我已回听并核对这段发言</span
+          ></label
+        >
+        <p id="edit-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button close-dialog">取消</button
+          ><button class="button primary" type="submit">保存校对</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="role-dialog">
+      <form id="role-form">
+        <div class="dialog-head">
+          <div>
+            <span class="page-kicker">SPEAKER & ROLE</span>
+            <h2 id="role-title">核对人物身份</h2>
+          </div>
+          <button
+            type="button"
+            class="icon-button close-dialog"
+            aria-label="关闭"
+          >
+            ×
+          </button>
+        </div>
+        <label
+          >人物显示名<input
+            id="role-name"
+            maxlength="100"
+            placeholder="可留空，继续显示声音编号" /></label
+        ><label
+          >庭审角色<input
+            id="role-value"
+            list="role-values"
+            maxlength="100"
+            required
+          /><datalist id="role-values"></datalist
+          ><small>按实际法域与案件选择，也可填写自定义角色。</small></label
+        ><label
+          >确认状态<select id="role-status">
+            <option value="unknown">身份待确认</option>
+            <option value="suggested">角色候选</option>
+            <option value="confirmed">人工确认</option>
+          </select></label
+        >
+        <div id="role-evidence" class="evidence-list"></div>
+        <label
+          >视频或核听依据<textarea
+            id="role-note"
+            rows="3"
+            maxlength="2000"
+            placeholder="例如：00:12 自我介绍，画面桌牌显示…"
+          ></textarea>
+        </label>
+        <p class="small muted">
+          勿凭座位、性别或着装直接认定身份；同一声音可能误合并，可将具体片段重新分配给新增人物。
+        </p>
+        <p id="role-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" class="button close-dialog">取消</button
+          ><button class="button primary" type="submit">保存人物</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="guide-dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="page-kicker">GETTING STARTED</span>
+          <h2>把视频变成可核查的逐字稿</h2>
+        </div>
+        <button class="icon-button close-dialog" aria-label="关闭">×</button>
+      </div>
+      <ol class="guide-steps">
+        <li>
+          <h3>导入庭审视频</h3>
+          <p>
+            选择视频文件、语言和音轨。本地模型需先安装依赖及权重，配置见仓库
+            README。云端识别需在服务端配置凭证，并在每次任务中明确同意。
+          </p>
+        </li>
+        <li>
+          <h3>逐句回听，核对人物</h3>
+          <p>
+            点击时间回放；点击校对修改错字并记录已核听。人物卡可填写姓名、确认角色及依据。画面可辅助核对桌牌和自我介绍，本版未自动做人脸或口型识别。
+          </p>
+        </li>
+        <li>
+          <h3>重点检查重叠与听不清</h3>
+          <p>
+            “重叠发言”筛选保留同时讲话的片段。实验性分离不保证中文庭审效果，分离声轨的跨段身份需手动归属，不能将其直接视为新人。
+          </p>
+        </li>
+        <li>
+          <h3>导出 Markdown</h3>
+          <p>
+            逐字稿按开始时间排序，包含角色确认状态、起止时间和待核听项。JSON
+            保留原始文本与字词信息，修改记录可单独下载。
+          </p>
+        </li>
+      </ol>
+      <div class="notice">
+        当前为本地单人开发版；完整角色识别、中文庭审准确率与多人重叠召回率尚需真实授权视频验收。未连接公网法律站。
+      </div>
+      <button class="button primary close-dialog wide">开始使用</button>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>
