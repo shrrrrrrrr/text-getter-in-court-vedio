@@ -41,6 +41,8 @@ Copy-Item .env.example .env
 
 ## 人物、重叠发言与画面
 
+准备部署到校园服务器时，可使用[一次执行的环境准备脚本](docs/campus-prepare.md)，批量完成资源检查、固定版 large-v3 下载、隔离镜像构建和 GPU 短测试。该脚本不开放网站、不修改现有 GLM；通过后再配置校园网多人访问。
+
 ### 本地说话人分离
 
 ```powershell
