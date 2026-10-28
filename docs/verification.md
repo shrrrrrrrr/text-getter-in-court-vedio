@@ -38,3 +38,11 @@ node tools/browser_verify.mjs
 用户实际运行固定版启动块，在首条 GitHub `curl` 请求得到 60 / self-signed certificate in certificate chain；由 `set -e` 可知后续 sudo 安装未执行。未确认具体证书发行者、代理配置或完整信任链，不把症状直接归因为某张校园 CA，不关闭校验、不修改系统信任。
 
 新增完整离线方案：正常 TLS 在本机下载并逐一核对模型、控制录音、Linux wheel 官方 SHA256，生成约 4.47 GB 的私有归档；PowerShell 自动执行 SSH 前置检查、SCP、归档校验、安全解包、服务器专用 venv 安装及无网络的短测试。新增 13 项回归通过，总计 58 项；覆盖目标 Linux/Python 环境标记（实际补齐 Python 3.10 的 exceptiongroup）、固定 Hub 版本、无索引/无网络安装、临时服务归属、损坏包拒绝、路径穿越/链接拒绝及模拟全流程。PowerShell 入口语法通过；远端 Python 3.10 语法检查通过。真实校园安装仍待用户执行，不能用这些结果代替实机 GPU/中文庭审效果验收。
+
+## SCP 连接关闭后的传输替代 · 2026-10-29
+
+用户实际输出表明 SSH 前置检查、本机模型与依赖校验均通过，归档缓存完整；SCP 认证后连接关闭，安装器尚未运行。日志未明确具体 SSH/SFTP 服务端配置或网络原因。现改用普通 SSH 标准输入传输原始二进制，按 SHA256 命名归档，校验远端前缀后续传，完整摘要通过后才解包安装；不调用 SCP/SFTP，不调整服务器 SSH 配置和信任策略。
+
+Windows 全量回归：64 项通过、8 项 Linux 文件系统测试跳过，保留既有两条框架弃用警告。WSL Linux 原生 `/tmp` 上准备及传输回归：40 项通过，包含实际进程中的 base64 启动代码、10 MiB 多块二进制、部分包续传、完整包复用、断线保留后恢复、错误前缀/完整包/符号链接拒绝及并发上传锁。Windows 挂载盘不提供相同的 Unix 权限语义，权限测试使用原生 Linux 临时目录。
+
+另以真实 Windows CPython 发送端，经 WSL 子进程标准输入向 Linux CPython 接收端续传 10 MiB 合成二进制，从 17,003 字节恢复并得到 `SSH_UPLOAD_VERIFIED`。这验证跨系统二进制管道，不等同于校园 SSH 认证或整包传输实机通过。PowerShell 语法、远端 Python 3.10 语法和 Windows 命令长度检查通过；网页 JavaScript 语法通过。校园整包上传、安装、GPU 运行与中文庭审质量仍以实际后续输出为准。
