@@ -32,3 +32,9 @@ node tools/browser_verify.mjs
 新增 `tools/campus_prepare.py`：固定公开模型/镜像来源，正常 TLS 下载、缓存复用、GPU 空闲门禁、隔离构建与无网络的单 GPU 控制录音测试；仅清理唯一命名且正确标记的自有测试容器。新增 13 项本地测试通过，包括下载 SHA/大小、现有文件不覆盖、来源间部分下载隔离、GPU忙碌拒绝、容器边界、清理归属、拒绝环境变量中的远程 Docker 上下文和模拟全流程；与原测试合计 45 项。模拟依赖不会运行真实 Docker 或 GPU。
 
 服务器尚未执行该批量脚本，因此不能声称权重已在服务器下载、GPU large-v3 已通过或网站已经上线。实际成功须以用户返回 `COURT_ASR_PREPARE_OK` 及其真实报告为证。准备范围见 campus-prepare.md。
+
+## curl 60 后的离线替代验证
+
+用户实际运行固定版启动块，在首条 GitHub `curl` 请求得到 60 / self-signed certificate in certificate chain；由 `set -e` 可知后续 sudo 安装未执行。未确认具体证书发行者、代理配置或完整信任链，不把症状直接归因为某张校园 CA，不关闭校验、不修改系统信任。
+
+新增完整离线方案：正常 TLS 在本机下载并逐一核对模型、控制录音、Linux wheel 官方 SHA256，生成约 4.47 GB 的私有归档；PowerShell 自动执行 SSH 前置检查、SCP、归档校验、安全解包、服务器专用 venv 安装及无网络的短测试。新增 13 项回归通过，总计 58 项；覆盖目标 Linux/Python 环境标记（实际补齐 Python 3.10 的 exceptiongroup）、固定 Hub 版本、无索引/无网络安装、临时服务归属、损坏包拒绝、路径穿越/链接拒绝及模拟全流程。PowerShell 入口语法通过；远端 Python 3.10 语法检查通过。真实校园安装仍待用户执行，不能用这些结果代替实机 GPU/中文庭审效果验收。
