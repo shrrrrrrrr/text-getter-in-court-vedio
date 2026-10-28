@@ -234,6 +234,22 @@ def receiver_command(remote_path, sha):
     return "python3 -c 'import base64,sys;exec(base64.b64decode(sys.argv.pop(1)))' " + code + " '" + remote_path + "' '" + sha + "'"
 
 
+def server_continue_command(upload_id, sha):
+    """One block for an existing server terminal; reuse the already verified upload."""
+    if not re.fullmatch(r"[a-f0-9]{12}", upload_id) or not re.fullmatch(r"[a-f0-9]{64}", sha):
+        raise RuntimeError("unsafe server continuation arguments")
+    return '\n'.join([
+        '(', 'set -eu', 'umask 077',
+        "court_sha='" + sha + "'",
+        'court_archive="$HOME/court-asr-upload.' + upload_id + '/bundle-$court_sha.tar"',
+        'printf \'%s  %s\\n\' "$court_sha" "$court_archive" | sha256sum --check -',
+        'court_payload=$(mktemp -d "$(dirname "$court_archive")/payload.XXXXXX")',
+        'tar --extract --file="$court_archive" --directory="$court_payload" --no-same-owner --no-same-permissions',
+        'sudo python3 "$court_payload/tools/campus_offline.py" --bundle "$court_payload" --gpu 3',
+        ')', ''
+    ])
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python-version", default="3.10")
@@ -241,8 +257,12 @@ if __name__ == "__main__":
     parser.add_argument("--result", type=Path)
     parser.add_argument("--receiver-path")
     parser.add_argument("--receiver-sha")
+    parser.add_argument("--server-upload-id")
+    parser.add_argument("--server-sha")
     args = parser.parse_args()
-    if args.receiver_path:
+    if args.server_upload_id:
+        print(server_continue_command(args.server_upload_id, args.server_sha), end='')
+    elif args.receiver_path:
         print(receiver_command(args.receiver_path, args.receiver_sha))
     else:
         output = build(args.python_version, args.skip_download)

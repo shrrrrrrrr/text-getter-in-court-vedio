@@ -46,3 +46,9 @@ node tools/browser_verify.mjs
 Windows 全量回归：64 项通过、8 项 Linux 文件系统测试跳过，保留既有两条框架弃用警告。WSL Linux 原生 `/tmp` 上准备及传输回归：40 项通过，包含实际进程中的 base64 启动代码、10 MiB 多块二进制、部分包续传、完整包复用、断线保留后恢复、错误前缀/完整包/符号链接拒绝及并发上传锁。Windows 挂载盘不提供相同的 Unix 权限语义，权限测试使用原生 Linux 临时目录。
 
 另以真实 Windows CPython 发送端，经 WSL 子进程标准输入向 Linux CPython 接收端续传 10 MiB 合成二进制，从 17,003 字节恢复并得到 `SSH_UPLOAD_VERIFIED`。这验证跨系统二进制管道，不等同于校园 SSH 认证或整包传输实机通过。PowerShell 语法、远端 Python 3.10 语法和 Windows 命令长度检查通过；网页 JavaScript 语法通过。校园整包上传、安装、GPU 运行与中文庭审质量仍以实际后续输出为准。
+
+## 完整上传后的服务器终端续装
+
+用户后续实际输出已出现 `SSH_UPLOAD_VERIFIED`，校园整包传输已确认；随后新开的交互 SSH 连接关闭，未见 `VERIFY_AND_EXTRACT_OFFLINE_BUNDLE` 或安装成功输出，不能据此确定服务端拒绝原因。改为提供原有服务器 Bash 终端可直接运行的完整续装块，不重新传输。已重新核对本机同一归档的完整 SHA256 及内含两个安装模块，未修改归档或要求重打包。
+
+Windows 全量测试 67 项通过、10 项 Linux 专用测试跳过；WSL Linux 相关回归 45 项通过。新增真实 Bash/GNU tar 测试覆盖完整归档校验、空私有目录解包、sudo 参数交接，以及损坏归档在解包和 sudo 前停止；其中安装调用由明确的测试替身执行，不是 GPU 模型测试。PowerShell 和网页 JavaScript 语法检查通过。真实校园安装、GPU 冒烟测试及中文庭审质量仍未确认。

@@ -64,8 +64,19 @@ Write-Host 'Uploading over ordinary SSH with verified resume. Keep this PowerShe
 if ($LASTEXITCODE -ne 0) { throw 'SSH upload stopped; partial archive retained. Rerun this entry to resume; installer was not run.' }
 $courtRemoteCommand = & $courtPython tools/build_campus_offline.py --receiver-path $courtRemoteArchive --receiver-sha $courtBundle.sha256
 if ($LASTEXITCODE -ne 0) { throw 'Cannot construct verified receiver command' }
+$courtContinueCommands = & $courtPython tools/build_campus_offline.py --server-upload-id $courtUploadId --server-sha $courtBundle.sha256
+if ($LASTEXITCODE -ne 0) { throw 'Cannot construct server terminal continuation' }
+$courtContinuePath = Join-Path $courtRoot '.state/deploy/continue-on-server.commands.sh'
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $courtContinuePath) | Out-Null
+[IO.File]::WriteAllText($courtContinuePath,($courtContinueCommands -join "`n") + "`n",[Text.UTF8Encoding]::new($false))
 Write-Host 'Server will verify/extract, install only the dedicated venv, then short-test GPU 3.'
 Write-Host 'Enter SSH/sudo passwords only in the normal terminal prompts; do not paste them into chat.'
 & ssh.exe @courtSshOptions -tt $Target $courtRemoteCommand
-if ($LASTEXITCODE -ne 0) { throw 'Remote preparation stopped. Share the final error lines; retain caches.' }
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'Remote interactive startup/preparation stopped. The uploaded archive is retained.'
+    Write-Host 'Use your existing SERVER BASH terminal to run the block below; no upload or download is needed:'
+    $courtContinueCommands | ForEach-Object { Write-Host $_ }
+    Write-Host ('Saved locally: ' + $courtContinuePath)
+    throw 'Remote preparation not confirmed. Server terminal continuation is ready; do not re-upload the archive.'
+}
 Write-Host 'OFFLINE_DEPLOY_COMMAND_FINISHED'
