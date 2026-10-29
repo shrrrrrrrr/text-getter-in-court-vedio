@@ -18,3 +18,4 @@
 - 用户已要求推进校园部署的第 1–3 步。0.2.0 的 Web 包先在相同 systemd 沙箱内通过回环 GPU 完整流程，再按部署块明确指定的校园 IPv4/端口启用 HTTP 测试监听；不修改防火墙、不调用 GLM。原 ASR 权重与 venv 保留，通过只读路径复用。代码/离线包本机通过不等于服务器安装或异机校园访问通过。
 - 本轮自动审批明确拒绝了额外创建持久 Linux 系统账号、加入 GPU 用户组及相应权限修改的方案。现有代码未包含这些动作，复用已授权的运行账号；未经用户另行明确授权，不通过替代命令、脚本或间接方式执行被拒绝的账号/组变更。Web 用户凭证与 Linux 系统账号是不同概念。
 - 最新 Web 安装回传已包含 `COURT_WEB_LOOPBACK_E2E_OK` 与 `COURT_CAMPUS_WEB_READY`：服务器 systemd 沙箱内 GPU 视频闭环、跨用户检查及校园监听已通过。电脑自动检查记录 `CAMPUS_PEER_HTTP_OK`，随后从本机再次直连验证首页/会话 200、匿名任务列表 401。真实地址及证据仅在 `.state/deploy/campus-web-live-verification.local.json` 和 `campus-peer-check.local.json`；不再让用户重复安装或上传。通路仅证明这台电脑，不代表所有校园子网。中文庭审、说话人/角色及重叠质量仍未验收。
+- 用户后续要求接入阿里云网站，作为与 SimCourt 并列的工具，并已要求推进下一步。当前先用 `tools/integration_preflight.py` 合并云端和校内只读盘点，离线块由 `tools/build_integration_preflight.py` 生成；真实入口与结果只存 `.state/`。不能把本机平台源码版本当线上版本，不能把模型单端口隧道或 SimCourt 的小请求签名代理直接套用于视频；适配边界见 `docs/cloud-integration.md`。新增 OS 账号/组仍受前述明确审批拒绝约束，不在盘点中创建或修改。

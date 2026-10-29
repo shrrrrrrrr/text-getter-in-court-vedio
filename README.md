@@ -45,6 +45,8 @@ Copy-Item .env.example .env
 
 当前服务器离线 ASR 环境、systemd 沙箱内 GPU 视频闭环和校园网页已由用户回传确认通过；开发电脑异机访问和匿名任务拒绝也已实测通过，无需重复准备或安装。个人凭证及真实入口在本机忽略目录，网页内登录后使用。按[校园 Web 部署说明](docs/campus-web-deploy.md)复现新环境；[部署规格](docs/campus-web-plan.md)保留验收边界。实际中文庭审、角色和重叠质量仍待真实素材验证。
 
+下一阶段为[云网站项目工具接入](docs/cloud-integration.md)。已提供两台服务器的离线只读检查块生成器；云端代理、平台统一登录与大视频传输适配尚未部署。
+
 ### 本地说话人分离
 
 ```powershell
