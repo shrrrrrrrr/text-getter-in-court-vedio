@@ -17,3 +17,4 @@
 - 最新用户回传已包含 `ASR_RUNTIME_TEST_PASSED`、`COURT_ASR_PREPARE_OK`、依赖检查通过及 `GLM_NOT_CALLED`：服务器离线 ASR 环境和英文控制录音短测试已通过，不再要求重复准备。原始输出、计时、资源采样与服务器路径保存在 `.state/deploy/campus-asr-success.local.json` 及对应私有日志。网页仍未部署，中文庭审、说话人和重叠分离未验收；测试进程退出后的显存释放不能外推常驻 Web worker。后续校园 Web 部署边界见 `docs/campus-web-plan.md`。
 - 用户已要求推进校园部署的第 1–3 步。0.2.0 的 Web 包先在相同 systemd 沙箱内通过回环 GPU 完整流程，再按部署块明确指定的校园 IPv4/端口启用 HTTP 测试监听；不修改防火墙、不调用 GLM。原 ASR 权重与 venv 保留，通过只读路径复用。代码/离线包本机通过不等于服务器安装或异机校园访问通过。
 - 本轮自动审批明确拒绝了额外创建持久 Linux 系统账号、加入 GPU 用户组及相应权限修改的方案。现有代码未包含这些动作，复用已授权的运行账号；未经用户另行明确授权，不通过替代命令、脚本或间接方式执行被拒绝的账号/组变更。Web 用户凭证与 Linux 系统账号是不同概念。
+- 最新 Web 安装回传已包含 `COURT_WEB_LOOPBACK_E2E_OK` 与 `COURT_CAMPUS_WEB_READY`：服务器 systemd 沙箱内 GPU 视频闭环、跨用户检查及校园监听已通过。电脑自动检查记录 `CAMPUS_PEER_HTTP_OK`，随后从本机再次直连验证首页/会话 200、匿名任务列表 401。真实地址及证据仅在 `.state/deploy/campus-web-live-verification.local.json` 和 `campus-peer-check.local.json`；不再让用户重复安装或上传。通路仅证明这台电脑，不代表所有校园子网。中文庭审、说话人/角色及重叠质量仍未验收。

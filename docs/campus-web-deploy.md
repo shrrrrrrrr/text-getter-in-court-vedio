@@ -2,6 +2,8 @@
 
 前提是已存在通过 `COURT_ASR_PREPARE_OK` 的服务器 ASR 环境。本包只包含应用、Web wheel、FFmpeg 和私有初始化凭证，不包含 ASR/CUDA 权重。默认本机单人模式保持可用；校园模式通过 `COURT_ACCESS_DB` 显式启用。
 
+当前目标服务器已完成安装、正式服务沙箱内 GPU 视频闭环和校园监听，开发电脑访问也已实测通过。无需重跑本次安装；以下步骤用于复现或明确的新环境部署。更新已有活跃服务需另行安排，安装器不会直接覆盖运行中的任务。
+
 ## 两段操作
 
 1. **本机 PowerShell**：开发者运行 `tools/build_campus_web.py`，通过正常 TLS 下载与官方发布摘要校验，生成 `.state/web-bundles/` 下的增量包及 `.state/deploy/campus-access.local.json`。随后运行 `tools/deploy_campus_web.ps1 -Target <普通账号@服务器> -Listen <校园IPv4> -Port 8766`。入口只校验已通过的 ASR 状态，用普通 SSH 断点续传新包，输出服务器安装块。不会再走已失败的 SCP/SFTP 或远程交互 SSH 启动方式。保留此窗口：上传后它会等待安装完成，并自动从本机直接检查校园 HTTP 会话入口，不发送个人凭证。
