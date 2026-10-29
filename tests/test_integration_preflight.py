@@ -108,7 +108,7 @@ def test_cloud_survey_command_allowlist_and_redacted_registry(monkeypatch, tmp_p
     monkeypatch.setattr(survey, 'command', command)
     monkeypatch.setattr(survey, 'service', lambda name: (
         {'WorkingDirectory': '/opt/token-controller/releases/example',
-         'ExecStart': '--state /var/lib/token-controller --web-accounts --tool-proxy-config /etc/token-controller/proxy.json'},
+         'ExecStart': '--state /var/lib/token-controller --web-accounts --tool-proxy-config /etc/token-controller-tools/proxy.json'},
         {'ActiveState': 'active'}))
     monkeypatch.setattr(survey, 'source_summary', lambda root: {'parsed_without_execution': True})
     reads = []

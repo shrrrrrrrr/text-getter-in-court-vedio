@@ -19,6 +19,7 @@ class Settings:
     allowed_hosts: tuple[str, ...] = ('127.0.0.1', 'localhost', '[::1]', 'testserver')
     worker_subprocess: bool = False
     gpu_uuid: str = ''
+    platform_public_key: Path | None = None
 
     @classmethod
     def from_env(cls):
@@ -33,5 +34,6 @@ class Settings:
             allowed_hosts=tuple(h.strip() for h in os.getenv('COURT_ALLOWED_HOSTS', '127.0.0.1,localhost,[::1]').split(',') if h.strip()),
             worker_subprocess=os.getenv('COURT_WORKER_SUBPROCESS', '0') == '1',
             gpu_uuid=os.getenv('COURT_GPU_UUID', ''),
+            platform_public_key=Path(os.environ['COURT_PLATFORM_PUBLIC_KEY']).resolve() if os.getenv('COURT_PLATFORM_PUBLIC_KEY') else None,
             max_upload_bytes=int(os.getenv('COURT_MAX_UPLOAD_BYTES', str(4 * 1024**3))),
         )

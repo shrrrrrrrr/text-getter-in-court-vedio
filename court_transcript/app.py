@@ -64,6 +64,8 @@ def create_app(settings=None, run_jobs=True):
     store = Store(settings.data_dir)
     runner = Runner(store, settings)
     access = Access(settings.access_db) if settings.access_db else None
+    if settings.platform_public_key and not access:
+        raise ValueError('Platform identity requires persistent task ownership')
     if not settings.allowed_hosts or any('*' in h or '/' in h or '\\' in h for h in settings.allowed_hosts):
         raise ValueError('Use explicit allowed hosts')
     preview_locks = {}
@@ -77,7 +79,7 @@ def create_app(settings=None, run_jobs=True):
         yield
         runner.shutdown()
 
-    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.3.0", lifespan=lifespan)
     app.state.store, app.state.runner = store, runner
     app.add_middleware(BodyLimit, maximum=settings.max_upload_bytes + 1024 * 1024)
 
@@ -86,27 +88,28 @@ def create_app(settings=None, run_jobs=True):
         nonlocal reserved_upload_bytes
         origin = request.headers.get("origin")
         path = request.scope['path']
+        platform_user = getattr(request.state, 'platform_user', None)
         request.state.user = None
         if access and path.startswith('/api/'):
-            if request.scope['scheme'] != 'https' and not settings.allow_http:
+            if not platform_user and request.scope['scheme'] != 'https' and not settings.allow_http:
                 return JSONResponse({'detail': '校园 HTTP 测试模式未显式启用'}, status_code=403)
-            if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+            if not platform_user and request.method not in {'GET', 'HEAD', 'OPTIONS'}:
                 expected_origin = request.scope['scheme'] + '://' + request.headers.get('host', '')
                 if origin != expected_origin:
                     return JSONResponse({'detail': '拒绝缺失或不匹配的请求来源'}, status_code=403)
             token = request.cookies.get(COOKIE)
-            user = access.session(token)
+            user = platform_user or access.session(token)
             request.state.user = user
             if path not in {'/api/auth/session', '/api/auth/login'}:
                 if not user:
                     return JSONResponse({'detail': '请先输入个人访问凭证登录'}, status_code=401)
-                if request.method not in {'GET', 'HEAD', 'OPTIONS'} and not hmac.compare_digest(request.headers.get('x-csrf-token', '').encode('utf-8'), user['csrf'].encode('ascii')):
+                if not platform_user and request.method not in {'GET', 'HEAD', 'OPTIONS'} and not hmac.compare_digest(request.headers.get('x-csrf-token', '').encode('utf-8'), user['csrf'].encode('ascii')):
                     return JSONResponse({'detail': '会话校验失败，请刷新后重试'}, status_code=403)
                 if path.startswith('/api/tasks/') and path != '/api/tasks/demo':
                     task_id = path.split('/')[3]
                     if not access.owned(task_id, user['id']):
                         return JSONResponse({'detail': '任务或文件不存在'}, status_code=404)
-        if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and urlsplit(origin).netloc != request.headers.get("host"):
+        if not platform_user and request.method not in {"GET", "HEAD", "OPTIONS"} and origin and urlsplit(origin).netloc != request.headers.get("host"):
             return JSONResponse({"detail": "拒绝跨站写入请求"}, status_code=403)
         if path == '/api/tasks' and request.method == 'POST':
             if upload_slots.locked() or len(runner.events) >= 8:
@@ -134,10 +137,13 @@ def create_app(settings=None, run_jobs=True):
         user = request.state.user
         return {'required': bool(access), 'authenticated': bool(user) if access else True,
                 'user': {'label': user['label']} if user else None, 'csrf': user['csrf'] if user else None,
-                'campus_http': bool(access and settings.allow_http)}
+                'campus_http': bool(access and settings.allow_http and not getattr(request.state, 'platform_user', None)),
+                'mode': 'platform' if getattr(request.state, 'platform_user', None) else 'campus' if access else 'local'}
 
     @app.post('/api/auth/login')
     async def login(request: Request):
+        if getattr(request.state, 'platform_user', None):
+            raise HTTPException(403, '请使用平台账号登录')
         if not access:
             raise HTTPException(404)
         if not access.limit_login(request.client.host if request.client else 'unknown'):
@@ -160,6 +166,8 @@ def create_app(settings=None, run_jobs=True):
 
     @app.post('/api/auth/logout')
     def logout(request: Request):
+        if getattr(request.state, 'platform_user', None):
+            raise HTTPException(403, '请从平台退出登录')
         if not access:
             raise HTTPException(404)
         access.logout(request.cookies.get(COOKIE, ''))
@@ -177,7 +185,7 @@ def create_app(settings=None, run_jobs=True):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.2.0", "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
+        return {"status": "ok", "version": "0.3.0", "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
                 "ffmpeg": bool(shutil.which("ffmpeg") and shutil.which("ffprobe")), "roles": ROLES,
                 "formats": sorted(MEDIA_SUFFIXES), "flags": FLAG_NAMES, "max_upload_bytes": settings.max_upload_bytes,
                 "scope": "campus-private-tasks" if access else "local-single-user", "recognition_accuracy": "not_validated"}
@@ -385,6 +393,11 @@ def create_app(settings=None, run_jobs=True):
         return FileResponse(ROOT / "static" / "index.html")
 
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+    if settings.platform_public_key:
+        from .platform_auth import PlatformIdentity
+        from .uploads import mount_uploads
+        mount_uploads(app, access, store, settings, runner, MEDIA_SUFFIXES, run_jobs)
+        app.add_middleware(PlatformIdentity, public_key=settings.platform_public_key, access=access)
     # Outermost: reject hostile Host headers before any path-based security decisions.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     return app

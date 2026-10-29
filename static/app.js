@@ -377,6 +377,10 @@ function upload() {
     form.append("file", state.file);
     opts.role_agent = $("#role-agent").checked;
     opts.visual_evidence = $("#visual-evidence").checked;
+    if (state.session?.mode === 'platform') {
+      uploadParts(opts).then(resolve, reject);
+      return;
+    }
     form.append("options", JSON.stringify(opts));
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/tasks");
@@ -400,6 +404,36 @@ function upload() {
     };
     xhr.send(form);
   });
+}
+async function uploadParts(options) {
+  const file = state.file;
+  const fingerprint = JSON.stringify([file.name, file.size, file.lastModified, options]);
+  if (!state.uploadSession || state.uploadSession.fingerprint !== fingerprint) {
+    state.uploadSession = {fingerprint, request_id: crypto.randomUUID().replaceAll('-', ''), id: null};
+  }
+  const session = state.uploadSession;
+  let uploadInfo = session.id ? await api(`/api/uploads/${session.id}`) : await api('/api/uploads', {
+    method: 'POST', body: JSON.stringify({filename: file.name, size: file.size, options, request_id: session.request_id}),
+  });
+  session.id = uploadInfo.upload_id;
+  if (uploadInfo.state === 'completed') return api(`/api/tasks/${uploadInfo.task_id}`);
+  if (uploadInfo.state !== 'receiving') throw Error(`上传 ${session.id} 的完成结果待检查，请勿重新提交。`);
+  try {
+    const present = new Set(uploadInfo.parts_present);
+    let received = uploadInfo.received_bytes;
+    for (let part = 0; part * uploadInfo.part_size < file.size; part++) {
+      if (present.has(part)) continue;
+      const start = part * uploadInfo.part_size;
+      await api(`/api/uploads/${session.id}/parts/${part}`, {method: 'POST',
+        headers: {'Content-Type': 'application/octet-stream'}, body: file.slice(start, start + uploadInfo.part_size)});
+      received += Math.min(uploadInfo.part_size, file.size - start);
+      $('#upload-progress').value = Math.min(100, received / file.size * 100);
+    }
+    $('#start-transcription').textContent = '正在合并并校验…';
+    return await api(`/api/uploads/${session.id}/finish`, {method: 'POST'});
+  } catch (error) {
+    throw Error(`${error.message}；上传标识 ${session.id}。保留当前页面和文件，再次点击可检查已接收结果。`);
+  }
 }
 function editSegment(id) {
   const s = state.task.segments.find((s) => s.id === id);
@@ -491,6 +525,11 @@ async function init() {
       $('#processing-note').textContent = '在校园服务器处理，保留未经润色的识别原文';
       $('#local-engine-option').textContent = '服务器语音识别 · 在校园服务器处理';
       $('#guide-boundary').textContent = '校园测试版：使用管理员分配的个人凭证登录，任务仅本人可见；退出后任务继续，重新登录可查看。文件在服务器处理。角色、中文庭审与重叠识别尚需真实素材验收；未连接公网法律站。';
+      if (state.session.mode === 'platform') {
+        $('#guide-boundary').textContent = '使用平台账号，任务仅本人可见；视频分块经云端传输到校内服务器转写。连接失败后保留当前页面和原文件，可检查已接收分块后继续。角色、中文庭审及多人重叠效果仍需核听验收。';
+        $('#logout-button').textContent = '退出平台账号';
+        $('#cancel-pending-uploads').hidden = false;
+      }
       if (!state.session.authenticated) { openDialog('#login-dialog'); return; }
       $('#logout-button').hidden = false;
       $('#workspace-label').textContent = state.session.user.label;
@@ -528,6 +567,17 @@ $('#logout-button').onclick = async () => {
   if (state.uploading) return toast('请等待上传结束后退出');
   try { await api('/api/auth/logout', { method: 'POST' }); clearMedia(); location.replace('/'); }
   catch (error) { toast(error.message, true); }
+};
+$('#cancel-pending-uploads').onclick = async () => {
+  if (state.uploading) return toast('请等待当前上传结束');
+  try {
+    const uploads = await api('/api/uploads');
+    for (const item of uploads.filter(item => ['receiving', 'needs_review'].includes(item.state))) {
+      await api(`/api/uploads/${item.upload_id}/abort`, {method: 'POST'});
+    }
+    state.uploadSession = null;
+    toast('已清理本人尚未合并的上传，转写任务保持不变');
+  } catch (error) { toast(error.message, true); }
 };
 $("#choose-file").onclick = $("#new-task").onclick = () =>
   $("#file-input").click();

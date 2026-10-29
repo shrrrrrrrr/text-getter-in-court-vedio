@@ -260,8 +260,9 @@ def cloud(args, report):
     config = flag_value(start, '--tool-proxy-config')
     if config:
         config_path = Path(config)
-        if not approved_path(config, ('/etc/token-controller-api', '/var/lib/token-controller', '/etc/token-controller')):
+        if not approved_path(config, ('/etc/token-controller-api', '/var/lib/token-controller', '/etc/token-controller', '/etc/token-controller-tools')):
             report['proxy_config'] = {'error_type': 'unexpected_config_path'}
+            report['errors'].append('proxy_config:unexpected_config_path')
         else:
             def proxy_summary():
                 data = json.loads(read_file(config_path, 8192))

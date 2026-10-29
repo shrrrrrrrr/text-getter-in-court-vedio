@@ -30,6 +30,7 @@ class Access:
                 CREATE TABLE IF NOT EXISTS owners(task_id TEXT PRIMARY KEY,user_id TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS limits(bucket TEXT PRIMARY KEY,started REAL NOT NULL,count INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS metadata(name TEXT PRIMARY KEY,value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS platform_nonces(nonce TEXT PRIMARY KEY,expires INTEGER NOT NULL);
             ''')
             db.execute('INSERT OR IGNORE INTO metadata VALUES(?,?)', ('csrf_secret', secrets.token_hex(32)))
         os.chmod(self.path, 0o600)
@@ -122,6 +123,18 @@ class Access:
     def claim(self, task_id, user_id):
         with self.connect() as db:
             db.execute('INSERT INTO owners VALUES(?,?)', (task_id, user_id))
+
+    def consume_platform_nonce(self, nonce, expires):
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute('DELETE FROM platform_nonces WHERE expires<=?', (time.time(),))
+            if db.execute('SELECT COUNT(*) FROM platform_nonces').fetchone()[0] >= 8192:
+                return False
+            try:
+                db.execute('INSERT INTO platform_nonces VALUES(?,?)', (nonce, expires))
+            except sqlite3.IntegrityError:
+                return False
+        return True
 
     def owned(self, task_id, user_id):
         with self.connect() as db:

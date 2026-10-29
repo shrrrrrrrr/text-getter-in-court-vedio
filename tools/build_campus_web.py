@@ -67,7 +67,7 @@ def build():
         with os.fdopen(fd, 'w', encoding='utf-8') as stream:
             json.dump(records, stream, ensure_ascii=False, indent=2)
     paths.append((credentials, 'private/access-seeds.json'))
-    manifest = {'schema': 2, 'python_abi': 'cp310', 'version': '0.2.0',
+    manifest = {'schema': 2, 'python_abi': 'cp310', 'version': '0.3.0',
                 'files': [base.file_row(p, name) for p, name in paths], 'wheel_sources': provenance,
                 'ffmpeg_source': {'url': FFMPEG_URL, 'sha256': FFMPEG_SHA}, 'model_weights_included': False}
     raw = json.dumps(manifest, ensure_ascii=False, indent=2).encode()

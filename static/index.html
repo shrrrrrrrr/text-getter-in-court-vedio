@@ -37,7 +37,7 @@
       <div class="sidebar-bottom">
         <span class="env-dot"></span> <span id="workspace-label">本地工作空间</span>
         <p id="storage-note">视频与逐字稿保存在本机<br />云端识别须单独选择</p>
-        <span class="version">TINGLU / 0.2.0</span>
+        <span class="version">TINGLU / 0.3.0</span>
       </div>
     </aside>
     <div class="shell">
@@ -390,6 +390,7 @@
         <p id="upload-error" class="form-error" role="alert"></p>
         <progress id="upload-progress" max="100" value="0" hidden></progress>
         <div class="dialog-actions">
+          <button type="button" class="button" id="cancel-pending-uploads" hidden>清理本人未完成上传</button>
           <button type="button" class="button close-dialog">取消</button
           ><button
             class="button primary"
