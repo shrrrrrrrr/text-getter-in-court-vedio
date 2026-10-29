@@ -43,3 +43,21 @@ def test_restart_requires_manual_resume(tmp_path):
     assert store.get(task.id).state=='interrupted'
     assert not runner.events
     runner.shutdown()
+
+
+def test_cancelled_subprocess_exits_and_leaves_no_live_queue_entry(tmp_path):
+    store = Store(tmp_path)
+    task = demo()
+    task.state, task.is_demo = 'queued', False
+    store.save(task)
+    (store.directory(task.id) / 'input.media').write_bytes(b'synthetic-invalid-media')
+    runner = Runner(store, Settings(data_dir=tmp_path, worker_subprocess=True))
+    runner.submit(task.id)
+    assert runner.cancel(task.id)
+    for _ in range(100):
+        if task.id not in runner.events:
+            break
+        time.sleep(.1)
+    runner.shutdown()
+    assert task.id not in runner.events
+    assert store.get(task.id).state == 'cancelled'

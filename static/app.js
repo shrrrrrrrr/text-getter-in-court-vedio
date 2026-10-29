@@ -3,6 +3,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const state = {
   health: null,
+  session: null,
   task: null,
   tasks: [],
   file: null,
@@ -45,6 +46,7 @@ async function api(url, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers: {
+      ...(state.session?.csrf ? { "X-CSRF-Token": state.session.csrf } : {}),
       ...(options.body && !(options.body instanceof FormData)
         ? { "Content-Type": "application/json" }
         : {}),
@@ -52,6 +54,10 @@ async function api(url, options = {}) {
     },
   });
   if (!res.ok) {
+    if (res.status === 401 && state.session?.required && !url.endsWith('/auth/login')) {
+      stopPolling(); clearMedia();
+      location.replace(location.pathname);
+    }
     let message = `请求失败 (${res.status})`;
     try {
       const d = await res.json();
@@ -350,8 +356,8 @@ function updateSetup() {
   $("#setup-status").textContent = needs.length
     ? "缺少 " + needs.join("、") + "。请按 README 配置后重启。"
     : cloud
-      ? "云端识别将传输本任务音频；原始视频保留在本机。"
-      : `本地模型：${cap?.model} / ${cap?.device}。权重可用性将在任务加载时检查。${!$("#diarize").checked ? " 当前未区分说话人，也未检测重叠。" : ""}`;
+      ? `云端识别将传输本任务音频；原始视频保留在${state.session?.required ? '校园服务器' : '本机'}。`
+      : `${state.session?.required ? '服务器' : '本地'}模型：${cap?.model} / ${cap?.device}。权重可用性将在任务加载时检查。${!$("#diarize").checked ? " 当前未区分说话人，也未检测重叠。" : ""}`;
   $("#start-transcription").disabled = needs.length > 0;
 }
 function upload() {
@@ -374,12 +380,14 @@ function upload() {
     form.append("options", JSON.stringify(opts));
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/tasks");
+    if (state.session?.csrf) xhr.setRequestHeader('X-CSRF-Token', state.session.csrf);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable)
         $("#upload-progress").value = (e.loaded / e.total) * 100;
     };
     xhr.onerror = () => reject(Error("上传连接失败，文件仍保留在本机，可重试"));
     xhr.onload = () => {
+      if (xhr.status === 401 && state.session?.required) location.replace(location.pathname);
       let d;
       try {
         d = JSON.parse(xhr.responseText);
@@ -473,11 +481,25 @@ async function refreshPreview(id) {
 }
 async function init() {
   try {
+    const sessionResponse = await fetch('/api/auth/session', {cache:'no-store'});
+    // Keep the existing loopback-only v0.1 backend usable during an application upgrade.
+    state.session = sessionResponse.status === 404 ? {required:false,authenticated:true} : await api('/api/auth/session');
+    if (state.session.required) {
+      $('#transport-note').hidden = !state.session.campus_http;
+      $('#workspace-label').textContent = '校园个人空间';
+      $('#storage-note').textContent = '文件在服务器处理，仅本人可见';
+      $('#processing-note').textContent = '在校园服务器处理，保留未经润色的识别原文';
+      $('#local-engine-option').textContent = '服务器语音识别 · 在校园服务器处理';
+      $('#guide-boundary').textContent = '校园测试版：使用管理员分配的个人凭证登录，任务仅本人可见；退出后任务继续，重新登录可查看。文件在服务器处理。角色、中文庭审与重叠识别尚需真实素材验收；未连接公网法律站。';
+      if (!state.session.authenticated) { openDialog('#login-dialog'); return; }
+      $('#logout-button').hidden = false;
+      $('#workspace-label').textContent = state.session.user.label;
+    }
     state.health = await api("/api/health");
     const cap = state.health.capabilities;
     $("#role-agent").disabled = !cap.role_agent;
     $("#environment").textContent = cap.local_asr
-      ? "本地 ASR 已安装"
+      ? `${state.session?.required ? '服务器' : '本地'} ASR 已安装`
       : "需要配置识别环境";
     $("#role-values").innerHTML = state.health.roles
       .map((r) => `<option value="${esc(r)}"></option>`)
@@ -490,6 +512,23 @@ async function init() {
   const id = location.hash.slice(1);
   if (/^[a-f0-9]{32}$/.test(id)) await openTask(id);
 }
+$('#login-dialog').addEventListener('cancel', (event) => event.preventDefault());
+$('#login-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = $('#login-form button'); button.disabled = true;
+  $('#login-error').textContent = '';
+  try {
+    await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ credential: $('#access-credential').value.trim() }) });
+    $('#access-credential').value = '';
+    location.replace(location.pathname);
+  } catch (error) { $('#login-error').textContent = error.message; }
+  finally { button.disabled = false; }
+};
+$('#logout-button').onclick = async () => {
+  if (state.uploading) return toast('请等待上传结束后退出');
+  try { await api('/api/auth/logout', { method: 'POST' }); clearMedia(); location.replace('/'); }
+  catch (error) { toast(error.message, true); }
+};
 $("#choose-file").onclick = $("#new-task").onclick = () =>
   $("#file-input").click();
 $("#file-input").onchange = (e) => {

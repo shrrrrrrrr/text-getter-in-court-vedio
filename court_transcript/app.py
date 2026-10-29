@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
+import asyncio
 import json
 import shutil
 import threading
@@ -24,6 +26,7 @@ from . import role_agent
 from .runner import Runner
 from .schema import Options, SegmentEdit, Speaker, SpeakerEdit, Task
 from .store import Conflict, Store
+from .access import Access, COOKIE, COOKIE_PATH
 
 MEDIA_SUFFIXES = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".flv", ".wmv", ".m4v", ".mpeg", ".mpg", ".ts", ".mts", ".m2ts", ".3gp", ".3g2", ".vob", ".rm", ".rmvb", ".ogv", ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".amr", ".wma", ".aiff", ".aif", ".caf", ".ape"}
 
@@ -36,11 +39,12 @@ class BodyLimit:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
         headers = dict(scope.get("headers", []))
+        maximum = min(self.maximum, 1024) if scope.get('path') == '/api/auth/login' else self.maximum
         try:
             size = int(headers.get(b"content-length", b"0"))
         except ValueError:
-            size = self.maximum + 1
-        if size > self.maximum:
+            size = maximum + 1
+        if size > maximum:
             return await JSONResponse({"detail": "上传文件超过本地大小限制"}, status_code=413)(scope, receive, send)
         used = 0
 
@@ -48,7 +52,7 @@ class BodyLimit:
             nonlocal used
             message = await receive()
             used += len(message.get("body", b""))
-            if used > self.maximum:
+            if used > maximum:
                 raise HTTPException(413, "上传文件超过本地大小限制")
             return message
 
@@ -59,8 +63,13 @@ def create_app(settings=None, run_jobs=True):
     settings = settings or Settings.from_env()
     store = Store(settings.data_dir)
     runner = Runner(store, settings)
+    access = Access(settings.access_db) if settings.access_db else None
+    if not settings.allowed_hosts or any('*' in h or '/' in h or '\\' in h for h in settings.allowed_hosts):
+        raise ValueError('Use explicit allowed hosts')
     preview_locks = {}
     preview_guard = threading.Lock()
+    upload_slots = asyncio.Semaphore(2)
+    reserved_upload_bytes = 0
 
     @asynccontextmanager
     async def lifespan(app):
@@ -68,22 +77,94 @@ def create_app(settings=None, run_jobs=True):
         yield
         runner.shutdown()
 
-    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.2.0", lifespan=lifespan)
     app.state.store, app.state.runner = store, runner
     app.add_middleware(BodyLimit, maximum=settings.max_upload_bytes + 1024 * 1024)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
 
     @app.middleware("http")
     async def local_boundary(request, call_next):
+        nonlocal reserved_upload_bytes
         origin = request.headers.get("origin")
+        path = request.scope['path']
+        request.state.user = None
+        if access and path.startswith('/api/'):
+            if request.scope['scheme'] != 'https' and not settings.allow_http:
+                return JSONResponse({'detail': '校园 HTTP 测试模式未显式启用'}, status_code=403)
+            if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+                expected_origin = request.scope['scheme'] + '://' + request.headers.get('host', '')
+                if origin != expected_origin:
+                    return JSONResponse({'detail': '拒绝缺失或不匹配的请求来源'}, status_code=403)
+            token = request.cookies.get(COOKIE)
+            user = access.session(token)
+            request.state.user = user
+            if path not in {'/api/auth/session', '/api/auth/login'}:
+                if not user:
+                    return JSONResponse({'detail': '请先输入个人访问凭证登录'}, status_code=401)
+                if request.method not in {'GET', 'HEAD', 'OPTIONS'} and not hmac.compare_digest(request.headers.get('x-csrf-token', '').encode('utf-8'), user['csrf'].encode('ascii')):
+                    return JSONResponse({'detail': '会话校验失败，请刷新后重试'}, status_code=403)
+                if path.startswith('/api/tasks/') and path != '/api/tasks/demo':
+                    task_id = path.split('/')[3]
+                    if not access.owned(task_id, user['id']):
+                        return JSONResponse({'detail': '任务或文件不存在'}, status_code=404)
         if request.method not in {"GET", "HEAD", "OPTIONS"} and origin and urlsplit(origin).netloc != request.headers.get("host"):
             return JSONResponse({"detail": "拒绝跨站写入请求"}, status_code=403)
-        response = await call_next(request)
+        if path == '/api/tasks' and request.method == 'POST':
+            if upload_slots.locked() or len(runner.events) >= 8:
+                return JSONResponse({'detail': '上传或处理队列已满，请稍后重试'}, status_code=429)
+            async with upload_slots:
+                reservation = 2 * settings.max_upload_bytes  # multipart spool plus the persisted input copy
+                if access and shutil.disk_usage(settings.data_dir).free < reserved_upload_bytes + reservation + 10 * 1024**3:
+                    return JSONResponse({'detail': '服务器可用磁盘不足，未开始上传'}, status_code=507)
+                reserved_upload_bytes += reservation
+                try:
+                    response = await call_next(request)
+                finally:
+                    reserved_upload_bytes -= reservation
+        else:
+            response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-        if request.url.path.startswith("/api/"):
+        if path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.get('/api/auth/session')
+    def session(request: Request):
+        user = request.state.user
+        return {'required': bool(access), 'authenticated': bool(user) if access else True,
+                'user': {'label': user['label']} if user else None, 'csrf': user['csrf'] if user else None,
+                'campus_http': bool(access and settings.allow_http)}
+
+    @app.post('/api/auth/login')
+    async def login(request: Request):
+        if not access:
+            raise HTTPException(404)
+        if not access.limit_login(request.client.host if request.client else 'unknown'):
+            raise HTTPException(429, '登录尝试过多，请稍后重试', headers={'Retry-After': '60'})
+        raw = await request.body()
+        if len(raw) > 1024:
+            raise HTTPException(422, '访问凭证无效')
+        try:
+            credential = json.loads(raw)['credential']
+        except (ValueError, KeyError, TypeError):
+            raise HTTPException(422, '访问凭证无效')
+        if not isinstance(credential, str) or not 20 <= len(credential) <= 160:
+            raise HTTPException(401, '访问凭证无效')
+        token = access.login(credential, request.cookies.get(COOKIE))
+        if not token:
+            raise HTTPException(401, '访问凭证无效')
+        response = JSONResponse({'status': 'authenticated'})
+        response.set_cookie(COOKIE, token, max_age=7 * 86400, httponly=True, secure=request.scope['scheme'] == 'https', samesite='lax', path=COOKIE_PATH)
+        return response
+
+    @app.post('/api/auth/logout')
+    def logout(request: Request):
+        if not access:
+            raise HTTPException(404)
+        access.logout(request.cookies.get(COOKIE, ''))
+        response = JSONResponse({'status': 'logged_out'})
+        response.delete_cookie(COOKIE, path=COOKIE_PATH)
         return response
 
     @app.exception_handler(FileNotFoundError)
@@ -96,23 +177,25 @@ def create_app(settings=None, run_jobs=True):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.1.0", "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
+        return {"status": "ok", "version": "0.2.0", "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
                 "ffmpeg": bool(shutil.which("ffmpeg") and shutil.which("ffprobe")), "roles": ROLES,
                 "formats": sorted(MEDIA_SUFFIXES), "flags": FLAG_NAMES, "max_upload_bytes": settings.max_upload_bytes,
-                "scope": "local-single-user", "recognition_accuracy": "not_validated"}
+                "scope": "campus-private-tasks" if access else "local-single-user", "recognition_accuracy": "not_validated"}
 
     @app.get("/api/tasks")
-    def tasks():
-        return [{k: t.model_dump()[k] for k in ["id", "title", "state", "stage", "progress", "created_at", "is_demo", "revision"]} for t in store.all()]
+    def tasks(request: Request):
+        return [{k: t.model_dump()[k] for k in ["id", "title", "state", "stage", "progress", "created_at", "is_demo", "revision"]} for t in store.all() if not access or access.owned(t.id, request.state.user['id'])]
 
     @app.post("/api/tasks/demo", status_code=201)
-    def create_demo():
+    def create_demo(request: Request):
         task = demo()
         store.save(task)
+        if access:
+            access.claim(task.id, request.state.user['id'])
         return task
 
     @app.post("/api/tasks", status_code=202)
-    async def upload(file: UploadFile = File(...), options: str = Form("{}")):
+    async def upload(request: Request, file: UploadFile = File(...), options: str = Form("{}")):
         try:
             opts = Options.model_validate_json(options)
         except ValueError:
@@ -140,6 +223,8 @@ def create_app(settings=None, run_jobs=True):
             task.manifest["input_sha256"] = digest.hexdigest()
             task.media["size"] = size
             store.save(task)
+            if access:
+                access.claim(task.id, request.state.user['id'])
             if run_jobs:
                 runner.submit(task.id)
             return task
@@ -300,6 +385,8 @@ def create_app(settings=None, run_jobs=True):
         return FileResponse(ROOT / "static" / "index.html")
 
     app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+    # Outermost: reject hostile Host headers before any path-based security decisions.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(settings.allowed_hosts))
     return app
 
 

@@ -24,6 +24,7 @@
       <button class="nav-item" id="guide-button">
         <span aria-hidden="true">⌘</span> 使用引导
       </button>
+      <button class="nav-item" id="logout-button" hidden>退出个人空间</button>
       <div class="recent-heading">
         <span>最近的转写</span
         ><button id="refresh-tasks" class="icon-button" aria-label="刷新任务">
@@ -34,9 +35,9 @@
         <p class="small muted">正在读取任务…</p>
       </div>
       <div class="sidebar-bottom">
-        <span class="env-dot"></span> 本地工作空间
-        <p>视频与逐字稿保存在本机<br />云端识别须单独选择</p>
-        <span class="version">LOCAL EDITION / 0.1.0</span>
+        <span class="env-dot"></span> <span id="workspace-label">本地工作空间</span>
+        <p id="storage-note">视频与逐字稿保存在本机<br />云端识别须单独选择</p>
+        <span class="version">TINGLU / 0.2.0</span>
       </div>
     </aside>
     <div class="shell">
@@ -97,7 +98,7 @@
               </p>
               <div class="local-note">
                 <span class="env-dot"></span>
-                默认在本地处理，保留未经润色的识别原文
+                <span id="processing-note">默认在本地处理，保留未经润色的识别原文</span>
               </div>
             </section>
             <section class="principles">
@@ -323,7 +324,7 @@
         </div>
         <label
           >识别方式<select id="engine">
-            <option value="local">本地语音识别 · 文件留在本机</option>
+            <option value="local" id="local-engine-option">本地语音识别 · 文件留在本机</option>
             <option value="tencent">腾讯云会议识别 · 发送音频至云端</option>
           </select></label
         >
@@ -547,10 +548,21 @@
           </p>
         </li>
       </ol>
-      <div class="notice">
+      <div class="notice" id="guide-boundary">
         当前为本地单人开发版；完整角色识别、中文庭审准确率与多人重叠召回率尚需真实授权视频验收。未连接公网法律站。
       </div>
       <button class="button primary close-dialog wide">开始使用</button>
+    </dialog>
+    <dialog id="login-dialog" aria-labelledby="login-title">
+      <form id="login-form">
+        <span class="page-kicker">PERSONAL WORKSPACE</span>
+        <h2 id="login-title">进入个人转写空间</h2>
+        <p>输入管理员分配给你的个人访问凭证。登录后仅显示自己的任务；退出不会停止服务器上已经提交的任务。</p>
+        <p class="notice" id="transport-note" hidden>校园 HTTP 测试入口没有传输加密，请仅使用获授权的测试素材。</p>
+        <label>个人访问凭证<input id="access-credential" type="password" autocomplete="off" maxlength="160" required /></label>
+        <p id="login-error" class="form-error" role="alert"></p>
+        <button type="submit" class="button primary wide">进入工作空间</button>
+      </form>
     </dialog>
     <div id="toast" class="toast" role="status" hidden></div>
   </body>
