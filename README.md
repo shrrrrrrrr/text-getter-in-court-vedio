@@ -43,6 +43,8 @@ Copy-Item .env.example .env
 
 准备部署到校园服务器时，可使用[一次执行的离线环境准备入口](docs/campus-prepare.md)：本机校验模型和 Linux 依赖、普通 SSH 校验续传、服务器专用虚拟环境安装和 GPU 短测试，避免服务器 GitHub HTTPS 证书链及 SCP/SFTP 传输问题。它不开放网站、不修改现有 GLM；通过后再配置校园网多人访问。正常联网环境的 Docker 准备路线仍保留。
 
+当前服务器离线依赖安装与英文控制录音 GPU 短测试已由用户回传确认通过；无需重复准备。校园网页和多人使用仍待实现，具体缺口及验收边界见[校园 Web 部署规格](docs/campus-web-plan.md)。本机页面不会因为服务器短测试通过而自动迁移。
+
 ### 本地说话人分离
 
 ```powershell

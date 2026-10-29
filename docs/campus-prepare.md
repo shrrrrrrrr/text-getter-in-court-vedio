@@ -4,6 +4,8 @@
 
 ## 离线路线（无需服务器访问互联网）
 
+当前用户回传已确认离线安装、`pip check`、GPU 控制录音短测试通过，包含 `ASR_RUNTIME_TEST_PASSED` 和 `COURT_ASR_PREPARE_OK`。这台服务器无需再次执行准备脚本；以下内容保留为复现说明。原始输出和真实资源记录仅保存在忽略目录。校园 Web 服务仍待后续部署，见 [campus-web-plan.md](campus-web-plan.md)。
+
 本机 PowerShell 执行 `tools/deploy_campus_offline.ps1 -Target <普通账号@服务器>`；真实目标只放忽略的私有启动文件，不写公开源码。脚本通过已校验的 SSH 主机密钥连接服务器，自动检测 Python 版本、系统依赖、磁盘，并创建或复用带归属标记的私有上传目录。它不接受明文密码参数，不改 SSH 信任策略。
 
 `tools/build_campus_offline.py` 在本机通过正常 TLS 下载固定模型、官方短控制录音、对应 Linux/Python 的 wheel 依赖，逐一与发布源 SHA256 核对。按目标 Linux 的 Python 版本与平台计算依赖闭包，避免 Windows 主机的环境标记导致漏掉 `exceptiongroup` 等包。Hugging Face Hub 固定到已验证的 1.30.0，忽略缓存里无关的新主版本。模型与依赖只存 `.state/`，归档附文件大小、SHA256、Python ABI 与来源信息，不发布真实归档。

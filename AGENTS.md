@@ -14,3 +14,4 @@
 - 2026-10-28 用户执行首个 GitHub 下载命令即 curl 60，未运行 sudo 安装。后续优先走本机正常 TLS 下载/官方指纹校验、SCP 和服务器专用 venv 的完整离线路线，避免只上传脚本后又在模型、测试录音、镜像或 pip 阶段遇到同类联网失败。不跳过 TLS，不自动信任未知校园 CA。
 - 2026-10-29 用户离线包校验、普通 SSH 检查通过，SCP 上传连接关闭，尚未安装。当前入口使用普通 SSH 二进制传输及前缀 SHA256 校验续传，不依赖 SCP/SFTP；失败保留缓存，不据此断言服务器 SFTP 配置原因。
 - 后续用户输出已确认 `SSH_UPLOAD_VERIFIED`，但 `ssh -tt` 新连接关闭，未见解包/安装输出。优先用已上传归档，在用户原有服务器 Bash 终端运行带完整 SHA256 校验的续装块；不要求重新上传，不直接断言 PTY/sudo/SSH 配置原因。实际安装及 GPU 测试仍待输出确认。
+- 最新用户回传已包含 `ASR_RUNTIME_TEST_PASSED`、`COURT_ASR_PREPARE_OK`、依赖检查通过及 `GLM_NOT_CALLED`：服务器离线 ASR 环境和英文控制录音短测试已通过，不再要求重复准备。原始输出、计时、资源采样与服务器路径保存在 `.state/deploy/campus-asr-success.local.json` 及对应私有日志。网页仍未部署，中文庭审、说话人和重叠分离未验收；测试进程退出后的显存释放不能外推常驻 Web worker。后续校园 Web 部署边界见 `docs/campus-web-plan.md`。
