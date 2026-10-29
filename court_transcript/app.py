@@ -79,7 +79,7 @@ def create_app(settings=None, run_jobs=True):
         yield
         runner.shutdown()
 
-    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.3.0", lifespan=lifespan)
+    app = FastAPI(title="庭录 · 庭审逐字转写", version="0.3.1", lifespan=lifespan)
     app.state.store, app.state.runner = store, runner
     app.add_middleware(BodyLimit, maximum=settings.max_upload_bytes + 1024 * 1024)
 
@@ -111,6 +111,11 @@ def create_app(settings=None, run_jobs=True):
                         return JSONResponse({'detail': '任务或文件不存在'}, status_code=404)
         if not platform_user and request.method not in {"GET", "HEAD", "OPTIONS"} and origin and urlsplit(origin).netloc != request.headers.get("host"):
             return JSONResponse({"detail": "拒绝跨站写入请求"}, status_code=403)
+        if (settings.maintenance_file and settings.maintenance_file.exists()
+                and request.method not in {'GET', 'HEAD', 'OPTIONS'}
+                and path.startswith(('/api/tasks', '/api/uploads'))):
+            return JSONResponse({'detail': '庭录正在维护，已有任务和文件已保留，请稍后刷新'}, status_code=503,
+                                headers={'Retry-After': '30'})
         if path == '/api/tasks' and request.method == 'POST':
             if upload_slots.locked() or len(runner.events) >= 8:
                 return JSONResponse({'detail': '上传或处理队列已满，请稍后重试'}, status_code=429)
@@ -185,7 +190,8 @@ def create_app(settings=None, run_jobs=True):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.3.0", "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
+        return {"status": "ok", "version": "0.3.1", "maintenance": bool(settings.maintenance_file and settings.maintenance_file.exists()),
+                "capabilities": {**capabilities(settings), "role_agent": role_agent.configured()},
                 "ffmpeg": bool(shutil.which("ffmpeg") and shutil.which("ffprobe")), "roles": ROLES,
                 "formats": sorted(MEDIA_SUFFIXES), "flags": FLAG_NAMES, "max_upload_bytes": settings.max_upload_bytes,
                 "scope": "campus-private-tasks" if access else "local-single-user", "recognition_accuracy": "not_validated"}

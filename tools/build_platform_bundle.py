@@ -34,7 +34,7 @@ def build(public_key, baseline_record, output):
             files['app/' + path.relative_to(ROOT).as_posix()] = path.read_bytes()
     files['tools/campus_platform_prepare.py'] = (ROOT / 'tools/campus_platform_prepare.py').read_bytes()
     font = ROOT / 'static/fonts/ChillReunion-Round.woff2'
-    manifest = {'schema': 3, 'version': '0.3.0',
+    manifest = {'schema': 3, 'version': '0.3.1',
         'baseline_app_sha256': baseline['app_sha256'], 'baseline_access_sha256': baseline['access_sha256'],
         'reuse_assets': [{'path': 'static/fonts/ChillReunion-Round.woff2', 'sha256': sha(font.read_bytes())}],
         'files': [{'path': name, 'size': len(raw), 'sha256': sha(raw)} for name, raw in sorted(files.items())],

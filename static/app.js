@@ -353,12 +353,14 @@ function updateSetup() {
     needs.push("说话人分离依赖与权重");
   if ($("#separate").checked && !cap?.overlap_separation)
     needs.push("语音分离依赖与权重");
-  $("#setup-status").textContent = needs.length
+  $("#setup-status").textContent = state.health?.maintenance
+    ? '服务正在维护，已有任务和文件已保留，请稍后刷新。'
+    : needs.length
     ? "缺少 " + needs.join("、") + "。请按 README 配置后重启。"
     : cloud
       ? `云端识别将传输本任务音频；原始视频保留在${state.session?.required ? '校园服务器' : '本机'}。`
       : `${state.session?.required ? '服务器' : '本地'}模型：${cap?.model} / ${cap?.device}。权重可用性将在任务加载时检查。${!$("#diarize").checked ? " 当前未区分说话人，也未检测重叠。" : ""}`;
-  $("#start-transcription").disabled = needs.length > 0;
+  $("#start-transcription").disabled = Boolean(state.health?.maintenance) || needs.length > 0;
 }
 function upload() {
   return new Promise((resolve, reject) => {

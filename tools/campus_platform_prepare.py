@@ -60,7 +60,7 @@ def command(args):
 def verify_bundle(bundle):
     raw = read(bundle / 'manifest.json', 65536)
     value = json.loads(raw)
-    require(value.get('schema') == 3 and value.get('version') == '0.3.0', 'unexpected integration bundle')
+    require(value.get('schema') == 3 and value.get('version') in ('0.3.0', '0.3.1'), 'unexpected integration bundle')
     require(10 <= len(value.get('files', [])) <= 100, 'unexpected file count')
     seen = set()
     total = 0
